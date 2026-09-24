@@ -1,0 +1,6 @@
+{
+  "policy_version": "v8.0.4-threshold-v1",
+  "policy_type": "threshold",
+  "threshold_source": "runtime",
+  "note": "Threshold is supplied at runtime. This configuration does not claim an optimal business threshold."
+}

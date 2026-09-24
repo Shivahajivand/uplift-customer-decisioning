@@ -1,0 +1,7 @@
+{
+  "policy_version": "v8.0.1",
+  "policy_type": "capacity",
+  "capacity_fraction": 0.2,
+  "tie_breaking": "stable_descending_uplift",
+  "note": "Example only; not a claim that 20% is optimal."
+}

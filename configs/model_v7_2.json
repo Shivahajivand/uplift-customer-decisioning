@@ -1,0 +1,26 @@
+{
+  "model_version": "v7.2",
+  "model_family": "LogisticRegression_TLearner",
+  "outcome": "visit",
+  "treatment": "treatment",
+  "features": [
+    "f0",
+    "f1",
+    "f2",
+    "f3",
+    "f4",
+    "f5",
+    "f6",
+    "f7",
+    "f8",
+    "f9",
+    "f10",
+    "f11"
+  ],
+  "scaler_artifact": "models/v7.2/scaler_v7_2.joblib",
+  "control_model_artifact": "models/v7.2/tlearner_control_v7_2.joblib",
+  "treatment_model_artifact": "models/v7.2/tlearner_treatment_v7_2.joblib",
+  "score_definition": "p_treatment - p_control",
+  "score_version": "raw_uplift_v1",
+  "validation_status": "frozen_after_v7_9"
+}
