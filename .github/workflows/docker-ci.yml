@@ -55,3 +55,9 @@ jobs:
 
           curl --fail --retry 10 --retry-delay 2 \
             http://127.0.0.1:8000/health
+
+          curl --fail --retry 10 --retry-delay 2 \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"f0":0.0,"f1":0.0,"f2":0.0,"f3":0.0,"f4":0.0,"f5":0.0,"f6":0.0,"f7":0.0,"f8":0.0,"f9":0.0,"f10":0.0,"f11":0.0}' \
+            http://127.0.0.1:8000/predict
