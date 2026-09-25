@@ -188,6 +188,28 @@ def test_end_to_end_decision_target():
     assert body["threshold"] == 0.0
 
 
+def test_decision_rejects_threshold_above_max():
+    payload = {
+        **VALID_PAYLOAD,
+        "threshold": 1.1,
+    }
+
+    response = client.post("/decision", json=payload)
+
+    assert response.status_code == 422
+
+
+def test_decision_rejects_threshold_below_min():
+    payload = {
+        **VALID_PAYLOAD,
+        "threshold": -1.1,
+    }
+
+    response = client.post("/decision", json=payload)
+
+    assert response.status_code == 422
+
+
 def test_client_cannot_supply_uplift_score():
     payload = {
         **VALID_PAYLOAD,
