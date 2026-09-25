@@ -85,3 +85,27 @@ jobs:
           echo "$target_response"
 
           python -c 'import json,sys; r=json.loads(sys.argv[1]); assert r["model_version"]=="v7.2"; assert r["feature_schema_version"]=="features_v1"; assert r["score_version"]=="raw_uplift_v1"; assert r["uplift_score"]==0.0; assert r["threshold"]==0.0; assert r["decision"]=="TARGET"; assert r["policy_version"]=="v8.0.4-threshold-v1"' "$target_response"
+
+          missing_feature_status=$(curl -sS -o /tmp/missing-feature-response.json \
+            -w "%{http_code}" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"f0":0.0,"f1":0.0,"f2":0.0,"f3":0.0,"f4":0.0,"f5":0.0,"f6":0.0,"f7":0.0,"f8":0.0,"f9":0.0,"f10":0.0}' \
+            http://127.0.0.1:8000/predict)
+
+          echo "Missing feature response:"
+          cat /tmp/missing-feature-response.json
+
+          test "$missing_feature_status" = "422"
+
+          invalid_threshold_status=$(curl -sS -o /tmp/invalid-threshold-response.json \
+            -w "%{http_code}" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"f0":0.0,"f1":0.0,"f2":0.0,"f3":0.0,"f4":0.0,"f5":0.0,"f6":0.0,"f7":0.0,"f8":0.0,"f9":0.0,"f10":0.0,"f11":0.0,"threshold":1.1}' \
+            http://127.0.0.1:8000/decision)
+
+          echo "Invalid threshold response:"
+          cat /tmp/invalid-threshold-response.json
+
+          test "$invalid_threshold_status" = "422"
