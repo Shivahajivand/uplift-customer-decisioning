@@ -36,7 +36,11 @@ jobs:
             -p 8000:8000 \
             project2-production:ci
 
-          trap 'docker logs project2-api-ci || true; docker stop project2-api-ci || true' EXIT
+          sleep 5
+
+          docker ps -a
+
+          docker logs project2-api-ci || true
 
           curl --fail --retry 10 --retry-delay 2 \
             http://127.0.0.1:8000/health
