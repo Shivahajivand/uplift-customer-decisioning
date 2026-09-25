@@ -1,0 +1,48 @@
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Git
+.git/
+.gitignore
+
+# Tests and test artifacts
+htmlcov/
+.coverage
+coverage.xml
+
+# Local development / IDE files
+.vscode/
+.idea/
+*.code-workspace
+
+# Documentation not needed at runtime
+docs/
+
+# Large datasets / data files
+*.csv
+*.tsv
+*.parquet
+*.feather
+*.pkl
+
+# Archives
+*.zip
+*.tar
+*.gz
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+tmp/
+temp/
