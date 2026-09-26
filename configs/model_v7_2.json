@@ -20,6 +20,11 @@
   "scaler_artifact": "models/v7.2/scaler_v7_2.joblib",
   "control_model_artifact": "models/v7.2/tlearner_control_v7_2.joblib",
   "treatment_model_artifact": "models/v7.2/tlearner_treatment_v7_2.joblib",
+  "artifact_sha256": {
+    "scaler": "59BD47B4ED24FFAE5E33E146C6AB1497792915D7170E3A63CEFC8090F13E7391",
+    "control_model": "74502B2D1A4F76D94BB18127C4513044294BD084BA822F4C577816EE089D327D",
+    "treatment_model": "48A5A68EF111707A82F796762BF44601D0978DFA03C3B83BB109781E90421C52"
+  },
   "score_definition": "p_treatment - p_control",
   "score_version": "raw_uplift_v1",
   "validation_status": "frozen_after_v7_9"
