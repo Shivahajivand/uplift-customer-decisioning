@@ -55,6 +55,20 @@ def test_health_endpoint():
     assert body["model_version"] == "v7.2"
 
 
+def test_metrics_endpoint_exposes_prometheus_metrics():
+    response = client.get("/metrics")
+
+    assert response.status_code == 200
+    assert "text/plain" in response.headers["content-type"]
+
+    body = response.text
+
+    assert "# HELP http_requests_total" in body
+    assert "# HELP http_request_duration_seconds" in body
+    assert "# HELP ml_predictions_total" in body
+    assert "# HELP ml_decisions_total" in body
+
+
 def test_predict_valid_request():
     response = client.post("/predict", json=VALID_PAYLOAD)
 

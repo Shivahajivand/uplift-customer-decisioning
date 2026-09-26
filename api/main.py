@@ -1,8 +1,10 @@
-﻿from pathlib import Path
+from pathlib import Path
 from time import perf_counter
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import Response
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from api.schemas import (
     CustomerFeatures,
@@ -16,6 +18,12 @@ from project2_core.model_service import ModelService
 from project2_core.decision_engine import ThresholdPolicy
 from project2_core.policy_config import load_policy_config
 from project2_core.logging_config import logger
+from project2_core.metrics import (
+    HTTP_REQUESTS_TOTAL,
+    HTTP_REQUEST_DURATION_SECONDS,
+    ML_PREDICTIONS_TOTAL,
+    ML_DECISIONS_TOTAL,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -72,9 +80,20 @@ async def observability_middleware(
         response = await call_next(request)
 
     except Exception:
-        latency_ms = (
-            perf_counter() - start_time
-        ) * 1000.0
+        latency_seconds = perf_counter() - start_time
+        latency_ms = latency_seconds * 1000.0
+
+        if request.url.path != "/metrics":
+            HTTP_REQUESTS_TOTAL.labels(
+                method=request.method,
+                endpoint=request.url.path,
+                status_code="500",
+            ).inc()
+
+            HTTP_REQUEST_DURATION_SECONDS.labels(
+                method=request.method,
+                endpoint=request.url.path,
+            ).observe(latency_seconds)
 
         logger.exception(
             "request failed",
@@ -92,11 +111,22 @@ async def observability_middleware(
 
         raise
 
-    latency_ms = (
-        perf_counter() - start_time
-    ) * 1000.0
+    latency_seconds = perf_counter() - start_time
+    latency_ms = latency_seconds * 1000.0
 
     response.headers["X-Request-ID"] = request_id
+
+    if request.url.path != "/metrics":
+        HTTP_REQUESTS_TOTAL.labels(
+            method=request.method,
+            endpoint=request.url.path,
+            status_code=str(response.status_code),
+        ).inc()
+
+        HTTP_REQUEST_DURATION_SECONDS.labels(
+            method=request.method,
+            endpoint=request.url.path,
+        ).observe(latency_seconds)
 
     logger.info(
         "request completed",
@@ -113,6 +143,14 @@ async def observability_middleware(
     )
 
     return response
+
+
+@app.get("/metrics", include_in_schema=False)
+def metrics():
+    return Response(
+        content=generate_latest(),
+        media_type=CONTENT_TYPE_LATEST,
+    )
 
 
 @app.get("/health")
@@ -136,6 +174,10 @@ def predict(
         result = model_service.predict_one(
             customer.model_dump()
         )
+
+        ML_PREDICTIONS_TOTAL.labels(
+            model_version=result.model_version,
+        ).inc()
 
         request_id = request.state.request_id
 
@@ -186,6 +228,11 @@ def decide(
             payload.uplift_score
         )
 
+        ML_DECISIONS_TOTAL.labels(
+            policy_version=policy_config.policy_version,
+            decision=decision_value,
+        ).inc()
+
         request_id = request.state.request_id
 
         logger.info(
@@ -231,6 +278,10 @@ def decision(
             )
         )
 
+        ML_PREDICTIONS_TOTAL.labels(
+            model_version=prediction.model_version,
+        ).inc()
+
         policy = ThresholdPolicy(
             policy_version=policy_config.policy_version,
             threshold=payload.threshold,
@@ -239,6 +290,11 @@ def decision(
         decision_value, reason = policy.decide(
             prediction.uplift_score
         )
+
+        ML_DECISIONS_TOTAL.labels(
+            policy_version=policy_config.policy_version,
+            decision=decision_value,
+        ).inc()
 
         request_id = request.state.request_id
 
