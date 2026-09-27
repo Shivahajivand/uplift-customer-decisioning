@@ -1,36 +1,66 @@
 # PROJECT 2 — V8.0.1 Production Core
 
-This milestone packages the frozen V7.2 Logistic T-learner for production-oriented
-serving without retraining, tuning, reopening V7.9 Final Validation, or hard-coding
-a supposedly optimal targeting policy.
+This milestone packages the frozen V7.2 Logistic T-learner for production-oriented serving without retraining, tuning, reopening V7.9 Final Validation, or hard-coding a supposedly optimal targeting policy.
 
-## Frozen model
-- Model family: Logistic Regression T-learner
-- Model version: v7.2
-- Baseline features: f0 ... f11
-- Treatment: treatment
-- Primary outcome: visit
-- Production score: raw uplift = P(Y=1|X,T=1) - P(Y=1|X,T=0)
-- Preprocessing: StandardScaler fitted on Development only
-- Calibration: none in production
-- RF/HGB: rejected as primary uplift models
-- V7.9 Final Validation: frozen
+## Frozen Model
 
-## Decision policy
-The model ranks treatment-response heterogeneity. A separate policy layer converts
-that score into a business decision.
+* Model family: Logistic Regression T-learner
+* Model version: `v7.2`
+* Baseline features: `f0 ... f11`
+* Treatment: `treatment`
+* Primary outcome: `visit`
+* Production score: `raw uplift = P(Y=1 | X,T=1) - P(Y=1 | X,T=0)`
+* Preprocessing: `StandardScaler` fitted on Development only
+* Calibration: none in production
+* RF/HGB: rejected as primary uplift models
+* V7.9 Final Validation: frozen
+
+## Imbalanced Outcome & Evaluation
+
+The primary outcome is `visit`, which is a relatively rare outcome (approximately 4.7% positive in the Criteo dataset).
+
+Because this project is fundamentally an uplift / treatment-effect problem rather than a conventional binary-classification problem, accuracy is not used as the primary model-selection or decision metric.
+
+Evaluation therefore prioritises uplift- and policy-level evidence, including incremental outcome and policy value, rather than optimising for classification accuracy alone.
+
+The validated V7.2 model remains frozen during productionisation. No additional resampling, SMOTE, class-weighting, or imbalance-driven retraining was introduced at this stage.
+
+## Decision Policy
+
+The model ranks treatment-response heterogeneity. A separate policy layer converts that score into a business decision.
 
 Supported core modes:
-1. capacity: top X% in a scored population, or an explicitly supplied threshold
-2. economic: requires explicit business inputs; no business costs/benefits are
-   invented from the dataset
+
+1. **Capacity:** target the top X% of a scored population, or use an explicitly supplied threshold derived from a reference population.
+2. **Economic:** requires explicit business inputs such as treatment cost, expected incremental benefit, and minimum acceptable net value. No business costs or benefits are invented from the dataset.
 
 No policy is declared universally optimal.
 
-## Next milestones
-V8.0.2 artifact integration + FastAPI
-V8.0.3 Docker
-V8.0.4 expanded tests + CI
-V8.0.5 logging/monitoring
-V8.0.6 explainability
-V8.0.7 zero-cost deployment evaluation
+## Current Productionisation Status
+
+Completed capabilities:
+
+* Frozen V7.2 model artifact integration
+* SHA-256 model artifact integrity verification
+* FastAPI real-time inference
+* `/predict` prediction endpoint
+* `/explain` model explainability endpoint
+* `/decide` threshold-based decision endpoint
+* `/decision` end-to-end scoring and threshold decision endpoint
+* `/decision/economic` cost-sensitive economic decision endpoint
+* Docker containerisation
+* Automated testing
+* GitHub Actions CI
+* Structured request and ML-event logging
+* Prometheus application and ML metrics
+* Model versioning and feature/score version identifiers
+* Capacity and threshold decision primitives
+* Imbalance-aware evaluation methodology
+* Cost-sensitive decisioning with explicit business inputs
+
+## Next Milestones
+
+* Zero-cost deployment evaluation
+* Final MLOps and operational documentation
+* Final architecture review
+* Final interview-readiness review
