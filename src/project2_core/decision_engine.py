@@ -1,6 +1,10 @@
 ﻿from __future__ import annotations
 
+import math
 from dataclasses import dataclass
+
+
+ECONOMIC_POLICY_VERSION = "economic-runtime-v1"
 
 
 @dataclass(frozen=True)
@@ -72,13 +76,44 @@ class EconomicInputs:
     minimum_net_value: float = 0.0
 
 
+def calculate_net_value(
+    uplift_score: float,
+    inputs: EconomicInputs,
+) -> float:
+    if not (-1.0 <= uplift_score <= 1.0):
+        raise ValueError("uplift_score must be in [-1, 1].")
+
+    if not math.isfinite(inputs.treatment_cost):
+        raise ValueError("treatment_cost must be finite.")
+
+    if inputs.treatment_cost < 0.0:
+        raise ValueError("treatment_cost must be non-negative.")
+
+    if not math.isfinite(
+        inputs.expected_incremental_benefit_per_unit_uplift
+    ):
+        raise ValueError(
+            "expected_incremental_benefit_per_unit_uplift "
+            "must be finite."
+        )
+
+    if not math.isfinite(inputs.minimum_net_value):
+        raise ValueError("minimum_net_value must be finite.")
+
+    return (
+        uplift_score
+        * inputs.expected_incremental_benefit_per_unit_uplift
+        - inputs.treatment_cost
+    )
+
+
 def economic_decision(
     uplift_score: float,
     inputs: EconomicInputs,
 ) -> tuple[str, str]:
-    net_value = (
-        uplift_score * inputs.expected_incremental_benefit_per_unit_uplift
-        - inputs.treatment_cost
+    net_value = calculate_net_value(
+        uplift_score,
+        inputs,
     )
 
     if net_value >= inputs.minimum_net_value:
@@ -102,7 +137,10 @@ def derive_capacity_threshold(
     if not (0 < capacity_fraction <= 1):
         raise ValueError("capacity_fraction must be in (0, 1].")
 
-    scores = np.asarray(list(uplift_scores), dtype=float)
+    scores = np.asarray(
+        list(uplift_scores),
+        dtype=float,
+    )
 
     if scores.size == 0:
         raise ValueError(
@@ -114,7 +152,16 @@ def derive_capacity_threshold(
             "uplift_scores must contain only finite values."
         )
 
-    k = max(1, int(np.ceil(scores.size * capacity_fraction)))
+    k = max(
+        1,
+        int(np.ceil(scores.size * capacity_fraction)),
+    )
+
     index = scores.size - k
 
-    return float(np.partition(scores, index)[index])
+    return float(
+        np.partition(
+            scores,
+            index,
+        )[index]
+    )

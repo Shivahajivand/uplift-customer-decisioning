@@ -12,11 +12,19 @@ from api.schemas import (
     ExplainabilityResponseAPI,
     DecisionRequest,
     DecisionResponseAPI,
+    EconomicDecisionRequest,
+    EconomicDecisionResponseAPI,
     DecisionInferenceRequest,
     DecisionInferenceResponseAPI,
 )
 from project2_core.model_service import ModelService
-from project2_core.decision_engine import ThresholdPolicy
+from project2_core.decision_engine import (
+    ECONOMIC_POLICY_VERSION,
+    EconomicInputs,
+    ThresholdPolicy,
+    calculate_net_value,
+    economic_decision,
+)
 from project2_core.policy_config import load_policy_config
 from project2_core.logging_config import logger
 from project2_core.metrics import (
@@ -278,6 +286,7 @@ def explain(
             detail=str(exc),
         ) from exc
 
+
 @app.post(
     "/decide",
     response_model=DecisionResponseAPI,
@@ -321,6 +330,79 @@ def decide(
             uplift_score=payload.uplift_score,
             threshold=payload.threshold,
             policy_version=policy_config.policy_version,
+            reason=reason,
+        )
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        ) from exc
+
+
+@app.post(
+    "/decision/economic",
+    response_model=EconomicDecisionResponseAPI,
+)
+def economic_decide(
+    payload: EconomicDecisionRequest,
+    request: Request,
+):
+    try:
+        inputs = EconomicInputs(
+            treatment_cost=payload.treatment_cost,
+            expected_incremental_benefit_per_unit_uplift=(
+                payload.expected_incremental_benefit_per_unit_uplift
+            ),
+            minimum_net_value=payload.minimum_net_value,
+        )
+
+        net_value = calculate_net_value(
+            payload.uplift_score,
+            inputs,
+        )
+
+        decision_value, reason = economic_decision(
+            payload.uplift_score,
+            inputs,
+        )
+
+        ML_DECISIONS_TOTAL.labels(
+            policy_version=ECONOMIC_POLICY_VERSION,
+            decision=decision_value,
+        ).inc()
+
+        request_id = request.state.request_id
+
+        logger.info(
+            "economic decision made",
+            extra={
+                "event_type": "economic_decision_made",
+                "request_id": request_id,
+                "endpoint": "/decision/economic",
+                "policy_version": ECONOMIC_POLICY_VERSION,
+                "uplift_score": payload.uplift_score,
+                "treatment_cost": payload.treatment_cost,
+                "expected_incremental_benefit_per_unit_uplift": (
+                    payload.expected_incremental_benefit_per_unit_uplift
+                ),
+                "minimum_net_value": payload.minimum_net_value,
+                "net_value": net_value,
+                "decision": decision_value,
+            },
+        )
+
+        return EconomicDecisionResponseAPI(
+            policy_type="economic",
+            policy_version=ECONOMIC_POLICY_VERSION,
+            uplift_score=payload.uplift_score,
+            treatment_cost=payload.treatment_cost,
+            expected_incremental_benefit_per_unit_uplift=(
+                payload.expected_incremental_benefit_per_unit_uplift
+            ),
+            minimum_net_value=payload.minimum_net_value,
+            net_value=net_value,
+            decision=decision_value,
             reason=reason,
         )
 

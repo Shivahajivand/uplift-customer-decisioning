@@ -119,6 +119,63 @@ class DecisionResponseAPI(BaseModel):
     policy_version: str
     reason: str
 
+class EconomicDecisionRequest(BaseModel):
+    """
+    Runtime business inputs for cost-sensitive decisioning.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        allow_inf_nan=False,
+    )
+
+    uplift_score: float = Field(
+        ge=-1.0,
+        le=1.0,
+        description="Raw uplift score produced by the frozen model.",
+    )
+
+    treatment_cost: float = Field(
+        ge=0.0,
+        description="Business cost of applying the treatment.",
+    )
+
+    expected_incremental_benefit_per_unit_uplift: float = Field(
+        description=(
+            "Expected business value associated with one unit "
+            "of incremental uplift."
+        ),
+    )
+
+    minimum_net_value: float = Field(
+        description=(
+            "Minimum acceptable expected net value for targeting."
+        ),
+    )
+
+
+class EconomicDecisionResponseAPI(BaseModel):
+    """
+    Public API response for cost-sensitive economic decisioning.
+    """
+
+    policy_type: Literal["economic"]
+    policy_version: str
+
+    uplift_score: float = Field(
+        ge=-1.0,
+        le=1.0,
+    )
+
+    treatment_cost: float
+    expected_incremental_benefit_per_unit_uplift: float
+    minimum_net_value: float
+
+    net_value: float
+
+    decision: Literal["TARGET", "DO_NOT_TARGET"]
+    reason: str
+
 
 class DecisionInferenceRequest(CustomerFeatures):
     """

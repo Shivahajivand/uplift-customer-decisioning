@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 from uuid import UUID
 
 import pytest
@@ -425,3 +425,128 @@ def test_end_to_end_structured_log_contains_prediction_and_decision_event_withou
 
     for feature in (f"f{i}" for i in range(12)):
         assert not hasattr(record, feature)
+
+def test_economic_decision_target():
+    response = client.post(
+        "/decision/economic",
+        json={
+            "uplift_score": 0.05,
+            "treatment_cost": 0.01,
+            "expected_incremental_benefit_per_unit_uplift": 1.0,
+            "minimum_net_value": 0.0,
+        },
+)
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["policy_type"] == "economic"
+    assert body["policy_version"] == "economic-runtime-v1"
+    assert body["uplift_score"] == 0.05
+    assert body["treatment_cost"] == 0.01
+    assert body["expected_incremental_benefit_per_unit_uplift"] == 1.0
+    assert body["minimum_net_value"] == 0.0
+    assert body["net_value"] == pytest.approx(0.04)
+    assert body["decision"] == "TARGET"
+
+
+def test_economic_decision_do_not_target():
+    response = client.post(
+        "/decision/economic",
+        json={
+            "uplift_score": 0.05,
+            "treatment_cost": 0.06,
+            "expected_incremental_benefit_per_unit_uplift": 1.0,
+            "minimum_net_value": 0.0,
+        },
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["net_value"] == pytest.approx(-0.01)
+    assert body["decision"] == "DO_NOT_TARGET"
+
+
+def test_economic_decision_targets_at_minimum_net_value_boundary():
+    response = client.post(
+        "/decision/economic",
+        json={
+            "uplift_score": 0.05,
+            "treatment_cost": 0.01,
+            "expected_incremental_benefit_per_unit_uplift": 1.0,
+            "minimum_net_value": 0.04,
+        },
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["net_value"] == pytest.approx(0.04)
+    assert body["minimum_net_value"] == pytest.approx(0.04)
+    assert body["decision"] == "TARGET"
+
+
+def test_economic_decision_respects_configurable_minimum_net_value():
+    response = client.post(
+        "/decision/economic",
+        json={
+            "uplift_score": 0.05,
+            "treatment_cost": 0.01,
+            "expected_incremental_benefit_per_unit_uplift": 1.0,
+            "minimum_net_value": 0.05,
+        },
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["net_value"] == pytest.approx(0.04)
+    assert body["minimum_net_value"] == pytest.approx(0.05)
+    assert body["decision"] == "DO_NOT_TARGET"
+
+def test_economic_decision_rejects_negative_treatment_cost():
+    response = client.post(
+        "/decision/economic",
+        json={
+            "uplift_score": 0.05,
+            "treatment_cost": -0.01,
+            "expected_incremental_benefit_per_unit_uplift": 1.0,
+            "minimum_net_value": 0.0,
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_economic_decision_rejects_extra_field():
+    response = client.post(
+        "/decision/economic",
+        json={
+            "uplift_score": 0.05,
+            "treatment_cost": 0.01,
+            "expected_incremental_benefit_per_unit_uplift": 1.0,
+            "minimum_net_value": 0.0,
+            "unexpected_field": 123,
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_economic_decision_rejects_nan():
+    response = client.post(
+        "/decision/economic",
+        json={
+            "uplift_score": 0.05,
+            "treatment_cost": "NaN",
+            "expected_incremental_benefit_per_unit_uplift": 1.0,
+            "minimum_net_value": 0.0,
+        },
+    )
+
+    assert response.status_code == 422
