@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 from uuid import UUID
 
 import pytest
@@ -84,6 +84,61 @@ def test_predict_valid_request():
     assert 0.0 <= body["p_treatment"] <= 1.0
     assert -1.0 <= body["uplift_score"] <= 1.0
 
+
+def test_explain_endpoint_returns_faithful_model_explanation():
+    predict_response = client.post(
+        "/predict",
+        json=VALID_PAYLOAD,
+    )
+
+    assert predict_response.status_code == 200
+
+    prediction = predict_response.json()
+
+    explain_response = client.post(
+        "/explain",
+        json=VALID_PAYLOAD,
+    )
+
+    assert explain_response.status_code == 200
+
+    explanation = explain_response.json()
+
+    assert explanation["model_version"] == "v7.2"
+    assert explanation["feature_schema_version"] == "features_v1"
+    assert explanation["score_version"] == "raw_uplift_v1"
+
+    assert explanation["p_control"] == pytest.approx(
+        prediction["p_control"]
+    )
+    assert explanation["p_treatment"] == pytest.approx(
+        prediction["p_treatment"]
+    )
+    assert explanation["uplift_score"] == pytest.approx(
+        prediction["uplift_score"]
+    )
+
+    assert len(explanation["feature_contributions"]) == 12
+
+    features = {
+        item["feature"]
+        for item in explanation["feature_contributions"]
+    }
+
+    assert features == {
+        f"f{i}"
+        for i in range(12)
+    }
+
+    for item in explanation["feature_contributions"]:
+        assert set(item) == {
+            "feature",
+            "raw_value",
+            "scaled_value",
+            "control_contribution",
+            "treatment_contribution",
+            "treatment_minus_control_contribution",
+        }
 
 def test_predict_rejects_extra_feature():
     payload = {

@@ -9,6 +9,7 @@ from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from api.schemas import (
     CustomerFeatures,
     PredictionResponseAPI,
+    ExplainabilityResponseAPI,
     DecisionRequest,
     DecisionResponseAPI,
     DecisionInferenceRequest,
@@ -209,6 +210,73 @@ def predict(
             detail=str(exc),
         ) from exc
 
+
+@app.post(
+    "/explain",
+    response_model=ExplainabilityResponseAPI,
+)
+def explain(
+    customer: CustomerFeatures,
+    request: Request,
+):
+    try:
+        result = model_service.explain_one(
+            customer.model_dump()
+        )
+
+        ML_PREDICTIONS_TOTAL.labels(
+            model_version=result.model_version,
+        ).inc()
+
+        request_id = request.state.request_id
+
+        logger.info(
+            "explainability generated",
+            extra={
+                "event_type": "explainability_generated",
+                "request_id": request_id,
+                "endpoint": "/explain",
+                "model_version": result.model_version,
+            },
+        )
+
+        return ExplainabilityResponseAPI(
+            model_version=result.model_version,
+            feature_schema_version=(
+                result.feature_schema_version
+            ),
+            score_version=result.score_version,
+            p_control=result.p_control,
+            p_treatment=result.p_treatment,
+            uplift_score=result.uplift_score,
+            control_log_odds=result.control_log_odds,
+            treatment_log_odds=result.treatment_log_odds,
+            control_intercept=result.control_intercept,
+            treatment_intercept=result.treatment_intercept,
+            feature_contributions=[
+                {
+                    "feature": item.feature,
+                    "raw_value": item.raw_value,
+                    "scaled_value": item.scaled_value,
+                    "control_contribution": (
+                        item.control_contribution
+                    ),
+                    "treatment_contribution": (
+                        item.treatment_contribution
+                    ),
+                    "treatment_minus_control_contribution": (
+                        item.treatment_minus_control_contribution
+                    ),
+                }
+                for item in result.feature_contributions
+            ],
+        )
+
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        ) from exc
 
 @app.post(
     "/decide",

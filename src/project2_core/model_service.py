@@ -8,7 +8,12 @@ from typing import Mapping
 import joblib
 import numpy as np
 
-from .schemas import FEATURES, PredictionResponse
+from .schemas import (
+    FEATURES,
+    ExplainabilityFeatureContribution,
+    ExplainabilityResponse,
+    PredictionResponse,
+)
 
 
 class ModelService:
@@ -187,4 +192,106 @@ class ModelService:
             p_control=p_control,
             p_treatment=p_treatment,
             uplift_score=uplift,
+        )
+
+    def explain_one(
+        self,
+        features: Mapping[str, float],
+    ) -> ExplainabilityResponse:
+        x = self._validate_features(features)
+
+        x_scaled = self.scaler.transform(x)
+
+        p_control = float(
+            self.control_model.predict_proba(
+                x_scaled
+            )[0, 1]
+        )
+
+        p_treatment = float(
+            self.treatment_model.predict_proba(
+                x_scaled
+            )[0, 1]
+        )
+
+        uplift = p_treatment - p_control
+
+        control_log_odds = float(
+            self.control_model.decision_function(
+                x_scaled
+            )[0]
+        )
+
+        treatment_log_odds = float(
+            self.treatment_model.decision_function(
+                x_scaled
+            )[0]
+        )
+
+        control_intercept = float(
+            self.control_model.intercept_[0]
+        )
+
+        treatment_intercept = float(
+            self.treatment_model.intercept_[0]
+        )
+
+        control_coefficients = (
+            self.control_model.coef_[0]
+        )
+
+        treatment_coefficients = (
+            self.treatment_model.coef_[0]
+        )
+
+        feature_contributions = []
+
+        for index, feature in enumerate(FEATURES):
+            raw_value = float(x[0, index])
+            scaled_value = float(x_scaled[0, index])
+
+            control_contribution = float(
+                scaled_value
+                * control_coefficients[index]
+            )
+
+            treatment_contribution = float(
+                scaled_value
+                * treatment_coefficients[index]
+            )
+
+            treatment_minus_control = (
+                treatment_contribution
+                - control_contribution
+            )
+
+            feature_contributions.append(
+                ExplainabilityFeatureContribution(
+                    feature=feature,
+                    raw_value=raw_value,
+                    scaled_value=scaled_value,
+                    control_contribution=control_contribution,
+                    treatment_contribution=treatment_contribution,
+                    treatment_minus_control_contribution=(
+                        treatment_minus_control
+                    ),
+                )
+            )
+
+        return ExplainabilityResponse(
+            model_version=self.model_version,
+            feature_schema_version=(
+                self.feature_schema_version
+            ),
+            score_version=self.score_version,
+            p_control=p_control,
+            p_treatment=p_treatment,
+            uplift_score=uplift,
+            control_log_odds=control_log_odds,
+            treatment_log_odds=treatment_log_odds,
+            control_intercept=control_intercept,
+            treatment_intercept=treatment_intercept,
+            feature_contributions=tuple(
+                feature_contributions
+            ),
         )

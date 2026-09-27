@@ -1,4 +1,6 @@
-﻿from pydantic import BaseModel, ConfigDict, Field
+﻿from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CustomerFeatures(BaseModel):
@@ -40,9 +42,51 @@ class PredictionResponseAPI(BaseModel):
     p_control: float = Field(ge=0.0, le=1.0)
     p_treatment: float = Field(ge=0.0, le=1.0)
     uplift_score: float = Field(ge=-1.0, le=1.0)
-from typing import Literal
 
-from pydantic import BaseModel, Field
+
+class ExplainabilityFeatureContributionAPI(BaseModel):
+    """
+    Per-feature explanation for the frozen Logistic T-learner.
+
+    Contributions are expressed on the model log-odds scale.
+    """
+
+    feature: str
+
+    raw_value: float
+    scaled_value: float
+
+    control_contribution: float
+    treatment_contribution: float
+    treatment_minus_control_contribution: float
+
+
+class ExplainabilityResponseAPI(BaseModel):
+    """
+    Public API response for model explainability.
+
+    Feature contributions are faithful to the underlying
+    LogisticRegression models and are expressed on the
+    log-odds scale.
+    """
+
+    model_version: str
+    feature_schema_version: str
+    score_version: str
+
+    p_control: float = Field(ge=0.0, le=1.0)
+    p_treatment: float = Field(ge=0.0, le=1.0)
+    uplift_score: float = Field(ge=-1.0, le=1.0)
+
+    control_log_odds: float
+    treatment_log_odds: float
+
+    control_intercept: float
+    treatment_intercept: float
+
+    feature_contributions: list[
+        ExplainabilityFeatureContributionAPI
+    ]
 
 
 class DecisionRequest(BaseModel):
@@ -74,6 +118,7 @@ class DecisionResponseAPI(BaseModel):
 
     policy_version: str
     reason: str
+
 
 class DecisionInferenceRequest(CustomerFeatures):
     """

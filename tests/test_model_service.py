@@ -127,3 +127,84 @@ def test_prediction_is_deterministic(model_service):
     assert result_1.uplift_score == pytest.approx(
         result_2.uplift_score
     )
+
+
+def test_explainability_reconciles_with_model_log_odds(
+    model_service,
+):
+    features = {
+        f"f{i}": float(model_service.scaler.mean_[i])
+        for i in range(12)
+    }
+
+    result = model_service.explain_one(features)
+
+    control_feature_sum = sum(
+        item.control_contribution
+        for item in result.feature_contributions
+    )
+
+    treatment_feature_sum = sum(
+        item.treatment_contribution
+        for item in result.feature_contributions
+    )
+
+    treatment_minus_control_sum = sum(
+        item.treatment_minus_control_contribution
+        for item in result.feature_contributions
+    )
+
+    assert len(result.feature_contributions) == 12
+
+    assert control_feature_sum + result.control_intercept == pytest.approx(
+        result.control_log_odds
+    )
+
+    assert treatment_feature_sum + result.treatment_intercept == pytest.approx(
+        result.treatment_log_odds
+    )
+
+    assert (
+        (
+            result.treatment_intercept
+            - result.control_intercept
+        )
+        + treatment_minus_control_sum
+    ) == pytest.approx(
+        result.treatment_log_odds
+        - result.control_log_odds
+    )
+
+
+def test_explainability_matches_prediction(
+    model_service,
+):
+    features = {
+        f"f{i}": float(model_service.scaler.mean_[i])
+        for i in range(12)
+    }
+
+    prediction = model_service.predict_one(features)
+    explanation = model_service.explain_one(features)
+
+    assert explanation.model_version == prediction.model_version
+
+    assert explanation.feature_schema_version == (
+        prediction.feature_schema_version
+    )
+
+    assert explanation.score_version == (
+        prediction.score_version
+    )
+
+    assert explanation.p_control == pytest.approx(
+        prediction.p_control
+    )
+
+    assert explanation.p_treatment == pytest.approx(
+        prediction.p_treatment
+    )
+
+    assert explanation.uplift_score == pytest.approx(
+        prediction.uplift_score
+    )
