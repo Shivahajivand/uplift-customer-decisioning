@@ -577,7 +577,7 @@ Additional technical documentation:
 
 ## Engineering Principles
 
-The project follows several deliberate principles:
+The project follows several deliberate engineering principles:
 
 1. **Freeze validated model behaviour before productionisation.**
 2. **Separate model inference from business policy.**
@@ -587,14 +587,12 @@ The project follows several deliberate principles:
 6. **Verify production artifacts before serving them.**
 7. **Observe both application and ML events.**
 8. **Test the container, not only the Python functions.**
-9. **Fail explicitly rather than silently degrading.**
-10. **Treat zero-cost hosting as a portfolio constraint, not a production-SLA guarantee.**
+9. **Fail explicitly rather than silently degrade model or decision behaviour.**
+10. **Treat the free-tier deployment as a portfolio demonstration rather than a production-SLA environment.**
 
 ---
 
 ## Current Status
-
-Project 2 is **feature-complete for the planned production-engineering scope**.
 
 The project currently demonstrates:
 
@@ -614,10 +612,3 @@ The project currently demonstrates:
 * cost-sensitive economic decisioning
 * public cloud deployment
 * operational validation
-
-The remaining work is no longer feature development. It is focused on:
-
-* final repository presentation
-* CV positioning
-* technical storytelling
-* Senior Data Scientist interview preparation
